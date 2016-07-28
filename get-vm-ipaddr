@@ -1,0 +1,22 @@
+foreach ($i in get-vm -name 032* | Where-Object { $_.PowerState -eq "PoweredOn" } ) {
+	$name = $i.name
+	$ipAll = $i.guest.ipaddress
+	$temp = $name -split "-"
+	$alias = $temp[0]
+	$ipaddr = "NONE"
+	foreach ( $j in $ipAll ){
+		if ( $j -like "164.115.32.*" ) {
+			$ipaddr = $j
+		}
+	}
+	if ($ipaddr -eq "NONE"){
+		$ipaddr = $alias
+		$output = "HOST;ADD;$name;$name;$ipaddr;cloud-ping;Poller-EGA;EGA-32 `n" 
+		$output | out-file d:\SUBNET32_NONE.txt -append
+	}else {
+		$output = "HOST;ADD;$name;$name;$ipaddr;cloud-ping;Poller-EGA;EGA-32 `n" 
+		$output | out-file d:\SUBNET32.txt -append
+	}
+	
+	write-host "$name $ipaddr"
+}
