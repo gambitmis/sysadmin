@@ -1,0 +1,86 @@
+<#
+.SYNOPSIS
+get Data from vCenter
+
+.AUTHOR
+Chalermsak krourwan (System Engineer)
+
+.VERSION
+1.01rev0
+
+#>
+
+# Add vmware snapin
+Add-PSSnapin VMware.VimAutomation.Core -ErrorAction SilentlyContinue
+# Load Module Mysql
+Import-Module -Name  'C:\Program Files (x86)\WindowsPowerShell\Modules\MySQL'
+
+# MysQL Connection Parameter
+$dbusr = "root"
+$dbpwd = ConvertTo-SecureString -String "ENMmt,7o" -AsPlainText -Force
+$Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $dbusr,$dbpwd
+$dbhost = "localhost"
+$dbname = "cloud-db"
+
+# vCenter Connection Parameter
+$vCenter_ip = "10.9.10.100"
+$vcenter_usr = "chalermsak.k@cloud.ega.or.th"
+$vCenter_passwd = "Tum1234"
+
+# connect vCenter
+# Connect-VIServer $vCenter_ip -user $vCenter_usr -Password $vCenter_passwd -SaveCredentials | Out-Null
+Connect-VIServer $vCenter_ip -user $vcenter_usr -Password $vCenter_passwd | Out-Null
+
+# function for Connect Mysql
+function getSQL{ #C1
+    param( [String]$sql_cmd )
+    $dbconn = Connect-MySqlServer -Credential $Credential -ComputerName $dbhost -Database $dbname 
+    Invoke-MySqlQuery -Query $sql_cmd
+    Disconnect-MySqlServer -Connection $dbconn | Out-Null
+} #C1
+
+
+# get vCenter id
+getSQL -sql_cmd "SELECT * FROM tb_vCenter where vcenter_ipv4 = '$vCenter_ip'"
+
+# Update Cluster
+foreach ( $i in get-cluster ){ #C2
+
+    if ($i){ #C3 if have any cluster 
+
+        $cluster_name = $i.Name
+        $cluster_name #display 
+        $vmhosts = Get-VMHost -Location $i 
+
+        if ($vmhosts){ #C4
+            
+            $total_vmhost = 0
+
+            foreach ( $j in $vmhosts ){ #C5
+             
+                $j.name   #display host name
+                # $j.State  #display host state
+
+                $vmhost_name = $j.Name
+
+                # Get-VMhostNetworkAdapter use with connected and maintenance only
+                if (( $j.ConnectionState -eq 'Connected' ) -or ( $j.ConnectionState -eq 'Maintenance')) { #C6
+                    $vmhost_ip = $($j | Get-VMHostNetworkAdapter | ? { $_.Name -eq 'vmk0' }).ip
+                }else{
+                    $vmhost_ip = $j.ConnectionState 
+                } #C6
+
+                $total_vmhost ++
+
+               # Insert vmhost data to Mysql
+               getSQL -sql_cmd "insert into tb_vmhost (vmhost_name,vmhost_ipv4,vmhost_last_mod,vmhost_cluster) values ('$vmhost_name','$vmhost_ip',now(),'$cluster_name') on duplicate key update vmhost_last_mod = now(), vmhost_ipv4 = '$vmhost_ip', vmhost_cluster = '$cluster_name' "
+            
+            } #C5
+        }#C4
+
+         $total_vmhost
+         # Insert Cluster Data to Mysql
+         getSQL -sql_cmd "insert into tb_cluster (cluster_name,cluster_last_mod,cluster_member) values ('$cluster_name',now(),'$total_vmhost') on duplicate key update cluster_last_mod = now()"
+
+    }#C3
+}#C2
