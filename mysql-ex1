@@ -1,0 +1,91 @@
+<#
+
+.SYNOPSIS
+Get vm by grouping in Subnet and vmtool that installed or not installed
+
+.DESC
+
+.INPUT
+
+.AUTHOR
+chalermsak krourwan (system engineer)
+
+.VERSION
+
+#>
+
+# Connect to VMWare Snappin 
+Add-PSSnapin VMware.VimAutomation.Core -ErrorAction SilentlyContinue
+
+#
+Import-Module -Name  'C:\Program Files (x86)\WindowsPowerShell\Modules\MySQL'
+
+# Connect vCenter
+# Connect-VIServer '10.9.11.69' -user 'Administrator@vsphere.local' -Password 'ENMmt,7o' -SaveCredentials | Out-Null
+Connect-VIServer '10.9.10.100' -user 'chalermsak.k@cloud.ega.or.th' -Password 'Tum1234' -SaveCredentials | Out-Null
+
+# list vm
+#Get-VM | ? { $_.PowerState -eq 'PoweredOn' }
+$usr = "root"
+$pwd = ConvertTo-SecureString -String "ENMmt,7o" -AsPlainText -Force
+$Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $usr,$pwd
+
+$conn = Connect-MySqlServer -Credential $Credential -ComputerName 'Localhost' -Database cloud-db | Out-Null
+<#
+$cluster = get-cluster
+$cluster.name
+
+foreach ( $i in get-vm | ? { $_.PowerState -eq "PoweredON" }) {
+    
+     $ipAll = $i.guest.IPAddress
+     $name = $i.name | Out-String
+     #$name
+     #Invoke-MySqlQuery -Query "INSERT INTO tb_vm (vm_name) VALUES ('$name');"
+     #Invoke-MySqlQuery -Query "SELECT * from tb_vm "
+            
+}
+#>
+
+foreach ( $i in get-cluster ) {
+
+    $cluster_name = $i.name 
+    $cluster_ha_enable = $i.HAEnabled
+
+    $cluster_dig = get-vmhost -Location $cluster_name
+    $cluster_dig.count
+    
+    if ( $cluster_dig.count -gt 0 ) {
+
+        foreach ( $j in  $cluster_dig ){
+
+            $host_name = $j.name
+            $host_state = $j.State
+            $host_conn = $j.ConnectionState
+            $host_Powerstate = $j.PowerState
+            $host_cpu_core = $j.NumCpu
+            $host_cpu_mhz = $j.CpuTotalMhz
+            $host_ip = "NONE"
+
+            # func get-vmhostnetworkadapter can use only host state on  connected and maintainance
+            if( ($host_state -eq 'Connected') -or ($host_state -eq 'Maintenance') ){
+
+                $host_ip = $( $j | Get-VMHostNetworkAdapter | ? { $_.Name -eq 'vmk0' } ).IP
+
+            }else{
+
+                $host_ip = $host_state
+
+            }
+            
+            $host_ip 
+
+        }
+
+    }
+
+}
+
+# Disconnect From vCenter
+Disconnect-VIServer * -Confirm:$false
+
+# End Scripts
