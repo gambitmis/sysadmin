@@ -17,15 +17,15 @@ Import-Module -Name  'C:\Program Files (x86)\WindowsPowerShell\Modules\MySQL'
 
 # MysQL Connection Parameter
 $dbusr = "root"
-$dbpwd = ConvertTo-SecureString -String "ENMmt,7o" -AsPlainText -Force
+$dbpwd = ConvertTo-SecureString -String "xxxxx" -AsPlainText -Force
 $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $dbusr,$dbpwd
 $dbhost = "localhost"
 $dbname = "cloud-db"
 
 # vCenter Connection Parameter
-$vCenter_ip = "10.9.10.100"
-$vcenter_usr = "chalermsak.k@cloud.ega.or.th"
-$vCenter_passwd = "Tum1234"
+$vCenter_ip = "xxxxxxx"
+$vcenter_usr = "xxxxxxxx"
+$vCenter_passwd = "xxxxxx"
 
 # connect vCenter
 # Connect-VIServer $vCenter_ip -user $vCenter_usr -Password $vCenter_passwd -SaveCredentials | Out-Null
