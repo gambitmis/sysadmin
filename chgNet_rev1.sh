@@ -1,5 +1,5 @@
 Add-PSSnapin VMware.VimAutomation.Core -ErrorAction SilentlyContinue
-Connect-VIServer '10.9.10.100' -user 'chalermsak.k@cloud.ega.or.th' -Password '10T0t9yh,' -SaveCredentials | Out-Null
+Connect-VIServer 'xxxxx' -user 'xxxx' -Password 'xxx,' -SaveCredentials | Out-Null
 
 function show-menu
 {
