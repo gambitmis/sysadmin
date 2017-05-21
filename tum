@@ -1,0 +1,29 @@
+Load-PowerCLI
+#$passwd =  Get-Credential | Export-Clixml -Path F:\passwd.xml 
+$mypasswd = import-clixml -Path "F:\passwd.xml"
+$conn = Connect-VIServer -Server 10.9.10.100 -Credential $mypasswd
+
+$file1 = "F:\PoCLI\getVMhost.csv"
+$file2 = "F:\PoCLI\getNetVMhost.csv"
+$vmnets = Import-Csv -Path "F:\PoCLI\MigrateToVS.csv"
+$esxi = "dc-ucs01.cloud.ega.or.th"
+
+#get-vmhost -Name $esxi | get-vm | select-Object Name | Export-Csv $file1 -NoTypeInformation
+
+function mg2vs {
+    param ( [String]$var)
+    switch($var){
+        { $vmnets | ? { $_.SRC -eq $var }} { $res = $($vmnets | ? { $_.SRC -eq $var } | Select-Object DST ); return $res.DST  }
+        default { return "Unknown"}
+    }
+}
+
+
+#get-vm -name 017215-AD-WebServicePlatfrom04 | Get-NetworkAdapter | Select-Object Parent,NetworkName,@{l="test";e={test($_.NetworkName)}}
+get-vmhost -Name $esxi | get-vm | Get-NetworkAdapter | Select-Object Parent,NetworkName,Name,@{l="NewNetworkAdapter";e={mg2vs($_.NetworkName)}} | export-csv $file2 -NoTypeInformation
+$ans = import-csv -Path $file2
+#$num_vms = $test.parent.Count
+#$vms = $test | Select-Object -Unique Parent |Sort-Object Parent 
+#$networkAdapter = $ans | Select-Object -Unique NetworkName | Sort-Object NetworkName
+$networkAdapter = $ans | Group-Object NetworkName | Select-Object @{l="NetworkName";e={$_.Name}},@{l="Effect VM";e={$_.Count}} | ConvertTo-Html -Fragment
+$networkAdapter
