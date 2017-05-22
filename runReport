@@ -1,0 +1,22 @@
+$mypasswd = import-clixml -Path "F:\passwd.xml"
+$conn = Connect-VIServer -Server 10.9.10.100 -Credential $mypasswd
+$file1 = "F:\PoCLI\getVMhost.csv"
+$file2 = "F:\PoCLI\dc-ucs22.csv"
+$file3 = "F:\PoCLI\work_dc-ucs22.csv"
+$vmnets = Import-Csv -Path "F:\PoCLI\MigrateToVS.csv"
+
+$esxi = "dc-ucs22.cloud.ega.or.th"
+
+# function
+function mg2vs {
+    param ( [String]$var)
+    switch($var){
+        { $vmnets | ? { $_.SRC -eq $var }} { $res = $($vmnets | ? { $_.SRC -eq $var } | Select-Object DST ); return $res.DST  }
+        default { return "Unknown"}
+    }
+}
+
+
+Get-Cluster -Name "EGA Cloud" | get-vm | Get-NetworkAdapter | Select-Object Parent,Macaddress,NetworkName,Name,@{l="NewNetworkAdapter";e={mg2vs($_.NetworkName)}} | export-csv $file2 -NoTypeInformation
+$work = Import-Csv -Path $file2
+$work | ? { $_.NewNetworkAdapter -ne "Unknown" } | export-csv -Path $file3
