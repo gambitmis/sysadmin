@@ -1,0 +1,31 @@
+Add-PSSnapin VMware.* -ErrorAction SilentlyContinue
+
+#$passwd =  Get-Credential | Export-Clixml -Path F:\passwd.xml 
+$mypasswd = import-clixml -Path "F:\passwd.xml"
+$conn = Connect-VIServer -Server 10.9.10.100 -Credential $mypasswd
+
+#$work = import-csv -Path "F:\PoCli\work_dc-ucs01.csv" | ? { $_.Parent -eq "192-017034-AD-G600361-02"}
+$work = import-csv -Path "F:\PoCli\work_dc-ucs01.csv" 
+$loop = $work.Count
+
+#foreach ( $i in $work ){
+#   Get-NetworkAdapter -VM $i.Parent | ? { $_.NetworkName -eq $i.NetworkName } | Set-NetworkAdapter -NetworkName $i.NewNetworkAdapter 
+#}
+
+for( $i=1 ; $i -le $work.Count ; $i++){
+    $vmname = $work[$i].Parent
+    $vmnic = $work[$i].NetworkName
+    $newnic = $work[$i].NewNetworkAdapter
+
+    Write-Host "Now Working on $vmname"
+
+    $getInfo = Get-NetworkAdapter -VM $vmname | ? { $_.NetworkName -eq $vmnic } 
+
+    if($getInfo){
+        echo $getInfo
+        $getInfo | Set-NetworkAdapter -NetworkName $newnic -Confirm:$false -ErrorAction SilentlyContinue
+    } 
+
+    Write-Progress -Activity "generate" -Status "Progressing Now:   $vmname   Total:   $i/$loop " -PercentComplete($i/$loop*100 )
+    
+}
