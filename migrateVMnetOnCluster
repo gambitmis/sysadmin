@@ -8,6 +8,7 @@ if( ! $(Get-Module -Name VMware.*)){
 # --------------------------
 #Get-Credential | Export-Clixml -Path "E:\PoCLI\passwd.xml"
 $mypasswd = Import-Clixml -Path "E:\PoCLI\passwd.xml"
+$username = $mypasswd.username | out-string
 $conn = Connect-VIServer -Server 10.9.10.100 -Credential $mypasswd
 
 
@@ -245,7 +246,7 @@ $vlan_dvs2vs = "E:\PoCLI\MigrateToVS.csv"
 $smtpserv = "164.115.3.100"
 $mailto = "chalermsak.krourwan@ega.or.th"
 $mailfrom = "pocli@cloud.ega.or.th"
-$mailsubject = "[Test script]Migration Task Notification"
+$mailsubject = "Migration Task Notification"
 
 # HTML Variable
 # -------------
@@ -267,7 +268,7 @@ $body = @"
 <table class="tb" >
 <tr><td><img src="E:\PoCLI\logo.png"></td></tr>
 <tr><td class="detail">Task Migration VMNET on Cluster</td></tr>
-<tr><td class="detailSub">$datetime</td></tr>
+<tr><td class="detailSub">$datetime       run scipt by  $username  </td></tr>
 <tr><td>$newvmnet</td></tr>
 <tr><td>$taskVM</td></tr>
 </table>
