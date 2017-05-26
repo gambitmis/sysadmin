@@ -180,7 +180,9 @@ function validDateFile {
         }
     }else{
         
-        Write-Host -ForegroundColor Magenta "Not Found file ""$export_info"" "   
+        Write-Host -ForegroundColor Magenta "Not Found file ""$export_info"" " 
+	return 1;
+        break;
     }
 
     Write-Host " "
