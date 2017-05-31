@@ -1,75 +1,9 @@
-# Check if not Load VMWare module. Auto Load module
-# --------------------------------------------------
 if( ! $(Get-Module -Name VMware.*)){
 . "C:\Program Files (x86)\VMware\Infrastructure\PowerCLI\Scripts\Initialize-PowerCLIEnvironment.ps1"
 }
 
-# Authentication to vCenter
-# --------------------------
-#Get-Credential | Export-Clixml -Path "E:\PoCLI\passwd.xml"
-$mypasswd = Import-Clixml -Path "E:\PoCLI\passwd.xml"
-$username = $mypasswd.username | out-string
-$conn = Connect-VIServer -Server 10.9.10.100 -Credential $mypasswd
-
-
 Function Set-AlternatingRows {
-	<#
-	.SYNOPSIS
-		Simple function to alternate the row colors in an HTML table
-	.DESCRIPTION
-		This function accepts pipeline input from ConvertTo-HTML or any
-		string with HTML in it.  It will then search for <tr> and replace 
-		it with <tr class=(something)>.  With the combination of CSS it
-		can set alternating colors on table rows.
-		
-		CSS requirements:
-		.odd  { background-color:#ffffff; }
-		.even { background-color:#dddddd; }
-		
-		Classnames can be anything and are configurable when executing the
-		function.  Colors can, of course, be set to your preference.
-		
-		This function does not add CSS to your report, so you must provide
-		the style sheet, typically part of the ConvertTo-HTML cmdlet using
-		the -Head parameter.
-	.PARAMETER Line
-		String containing the HTML line, typically piped in through the
-		pipeline.
-	.PARAMETER CSSEvenClass
-		Define which CSS class is your "even" row and color.
-	.PARAMETER CSSOddClass
-		Define which CSS class is your "odd" row and color.
-	.EXAMPLE $Report | ConvertTo-HTML -Head $Header | Set-AlternateRows -CSSEvenClass even -CSSOddClass odd | Out-File HTMLReport.html
-	
-		$Header can be defined with a here-string as:
-		$Header = @"
-		<style>
-		TABLE {border-width: 1px;border-style: solid;border-color: black;border-collapse: collapse;}
-		TH {border-width: 1px;padding: 3px;border-style: solid;border-color: black;background-color: #6495ED;}
-		TD {border-width: 1px;padding: 3px;border-style: solid;border-color: black;}
-		.odd  { background-color:#ffffff; }
-		.even { background-color:#dddddd; }
-		</style>
-		"@
-		
-		This will produce a table with alternating white and grey rows.  Custom CSS
-		is defined in the $Header string and included with the table thanks to the -Head
-		parameter in ConvertTo-HTML.
-	.NOTES
-		Author:         Martin Pugh
-		Twitter:        @thesurlyadm1n
-		Spiceworks:     Martin9700
-		Blog:           www.thesurlyadmin.com
-		
-		Changelog:
-			1.1         Modified replace to include the <td> tag, as it was changing the class
-                        for the TH row as well.
-            1.0         Initial function release
-	.LINK
-		http://community.spiceworks.com/scripts/show/1745-set-alternatingrows-function-modify-your-html-table-to-have-alternating-row-colors
-    .LINK
-        http://thesurlyadmin.com/2013/01/21/how-to-create-html-reports/
-	#>
+
     [CmdletBinding()]
    	Param(
        	[Parameter(Mandatory,ValueFromPipeline)]
@@ -85,7 +19,7 @@ Function Set-AlternatingRows {
 		$ClassName = $CSSEvenClass
 	}
 	Process {
-		If ($Line.Contains("<tr><td>"))
+		If ($Line.Contains("<tr>"))
 		{	$Line = $Line.Replace("<tr>","<tr class=""$ClassName"">")
 			If ($ClassName -eq $CSSEvenClass)
 			{	$ClassName = $CSSOddClass
@@ -94,212 +28,204 @@ Function Set-AlternatingRows {
 			{	$ClassName = $CSSEvenClass
 			}
 		}
-
-        If ($Line.Contains("<tr><th>"))
+        If ($Line.Contains("<th>"))
 		{	
             $Line = $Line.Replace("<th>","<th class=""th"">")
+		}
+        If ($Line.Contains("<td>"))
+		{	
+            $Line = $Line.Replace("<td>","<td class=""td"">")
+		}
+        If ($Line.Contains("<table>"))
+		{	
+            $Line = $Line.Replace("<table>","<table class=""tb"">")
 		}
 		Return $Line
 	}
 }
 
+
+function sendHtmlEmails {
+    param(
+       
+        [Parameter(mandatory=$true)]
+        [String]$input_body1,
+
+        [Parameter(mandatory=$true)]
+        [String]$input_body2,
+
+        [Parameter(mandatory=$false)]
+        [String]$attach,
+
+        [Parameter(mandatory=$false)]
+        [String]$title,
+
+        [Parameter(mandatory=$false)]
+        [String]$mailsubject,
+
+        [Parameter(mandatory=$false)]
+        [String]$running_user,
+
+        [Parameter(mandatory=$false)]
+        [String]$smtpserv,
+
+        [Parameter(mandatory=$false)]
+        [String]$mailfrom,
+
+        [Parameter(mandatory=$false)]
+        [String]$mailto
+
+
+    )
+
+    # Assing Temp Variable
+    # --------------------
+    $tmp_mailfrom = "pocli@cloud.ega.or.th"
+    $tmp_mailto = "chalermsak.krourwan@ega.or.th"
+    $tmp_smtpserv = "164.115.3.100"
+    $tmp_title ="Please insert Title"
+    $tmp_detail = "Please insert message detail"
+    $tmp_mailsubject = "Please Insert MailSubject"
+    $tmp_running_user = "Please Identify User"
+    
+    # Assing Pre Variable using from tmp
+    # ----------------------------------
+    if(!$mailfrom){
+        $mailfrom = $tmp_mailfrom
+    }
+
+    if(!$mailto){
+        $mailto = $tmp_mailto
+    }
+
+    if(!$smtpserv){
+        $smtpserv = $tmp_smtpserv
+    }
+
+    if(!$title){
+        $title = $tmp_title
+    }
+
+
+    if(!$mailsubject){
+        $mailsubject = $tmp_mailsubject
+    }
+
+    if(!$running_user){
+        $running_user = $tmp_running_user
+    }
+
+    if(!$attach){
+        $attach = $tmp_attach
+    }
+
+    $header = "<style>"
+    $header += ".tb {border-width: 1px;border-style: solid;border-color: black;border-collapse: collapse; width:100%;}" 
+    $header += ".th {border-width: 1px;padding: 3px;border-style: solid;border-color: black;background-color: #99c2ff; font-family:tahoma; color:white;}"
+    $header += ".td {border-width: 1px;padding: 3px;border-style: solid;border-color: black; text-align: left;}"
+    $header += ".detailTB {black;background-color: #66a3ff; padding:10px 10px 10px 10px;border-width: 1px;padding: 3px;border-style: solid;border-color: black; width:100%; font-size:12px; font-family:tahoma; color:white; padding:10px 10px 10px 10px;}"
+    $header += ".detail1 {font-size:30px; font-family:tahoma; color:white; }"
+    $header += ".detail2 {font-size:15px; font-family:tahoma; color:white; }"
+    $header += ".detail3 {font-size:12px; font-family:tahoma; color:white; padding-top: 10px; padding-bottom:10px;}"
+    $header += ".odd  { background-color:#ffffff; }"
+    $header += ".even { background-color:#dddddd; }"
+    $header += "</style>"
+
+    $detail = "<table class=""detailTB"">"
+    $detail += "<tr><td><div class=""detail1"">TASK </div><div class=""detail2"">$title</div></td></tr>"
+    $detail += "<tr><td align=""right""><div class=""detail3"">Running This Script by @$running_user</div></td></tr>"
+    $detail += "</table>"
+
+    $html_body = $header
+    $html_body += "<table border=0 width=640px>"
+    $html_body += "<tr><td><img src=""https://www.ega.or.th/website/images/2015/f-icon.png""></td></tr>"
+    $html_body += "<tr><td>$detail</td></tr>"
+    $html_body += "<tr><td>$input_body1</td></tr>"
+    $html_body += "<tr><td>$input_body2</td></tr>"
+    $html_body += "</table>"
+   
+    Send-MailMessage -From $mailfrom -To $mailto -Subject $mailsubject -Attachments $attach -Body $html_body -BodyAsHtml -SmtpServer $smtpserv -Priority High
+
+}
+
+function ReportHeader {
+    param(
+        
+        [parameter(mandatory=$true)]
+        [string]$msg
+
+    )
+    $count = $msg.Length
+    $underline = "="
+    for($i=0;$i -lt $count; $i++){
+        $underline += "="
+    }
+    Write-Host " "
+    Write-Host -ForegroundColor Magenta $msg
+    Write-Host -ForegroundColor Magenta $underline
+}
+
 function migrateSwtich {
-    param ( [String]$var)
+    
+    param (
+        [Parameter(mandatory=$true)]
+        [String]$var
+    )
+
     switch($var){
         { $vmnets | ? { $_.SRC -eq $var }} { $res = $($vmnets | ? { $_.SRC -eq $var } | Select-Object DST ); return $res.DST  }
         default { return "Unset"}
     }
 }
 
-
-function progressMigrate {
-    
-    $count = 0 
-
-    Write-Host "*****************************************************"
-    Write-Host "*                                                   *"
-    Write-Host "*        Please Confirm to Progress Task            *"
-    Write-Host "*                                                   *"
-    Write-Host "*****************************************************"
-    Write-Host -ForegroundColor Yellow "Script will Progress on $loop Task"
-    $confirm = Read-Host "Do you want simulation run ? Y/N (Default:Yes)" 
-    switch($confirm){
-        "y" { $proc = 1; }
-        "n" { $proc = 0; }
-        default { $proc = 1; }
-    }
-
-    foreach($j in $task)
-    {
-        # Init Parameter
-        # ---------------            
-        $vmname = $j.Parent
-        $vmnic = $j.NetworkName
-        $newnic = $j.NewNetworkAdapter
-        $percent = [int]$percent = $count/$loop*100
-
-        # Working Progress
-        # -----------------
-        Write-Host "... Now Working on $vmname ..." -ForegroundColor DarkYellow
-        $getInfo = Get-NetworkAdapter -VM $vmname | ? { $_.NetworkName -eq $vmnic }
-        
-        if($proc -eq 1){
-            $getInfo | Set-NetworkAdapter -NetworkName $newnic -WhatIf
-        }else{
-            Write-Host -ForegroundColor Cyan "REal RUN"
-            #$getInfo | Set-NetworkAdapter -NetworkName $newnic -Confirm:$false -ErrorAction Stop 
-        }
-        $getinfo | ft -AutoSize
-        $count++
-        # Progress Bar
-        # -------------
-        Write-Progress -Activity "Migration VMNET" -Status "Migrating Now:   $vmname   Total:   $count/$loop  Percent:$percent% " -PercentComplete($count/$loop*100 )
-    }
-
-}
-
-function validDateFile {
+function valiDateFile {
     param (
 
-        [Parameter(Mandatory)]
-        [String]$export_info
+        [Parameter(Mandatory=$true)]
+        [String]$file,
+
+        [Parameter(Mandatory=$true)]
+        [int]$milestone,
+
+        [Parameter(Mandatory)][validateSet("Day","Hour","Minutes")]
+        [string]$milestone_scope
     )
-    $testfile = Test-Path $export_info # same value as $export_info
+    $testfile = Test-Path $file 
+    $chkfile = Get-ChildItem $file -ErrorAction SilentlyContinue
+    $file_last_wr = $chkfile.LastWriteTime
+    switch($milestone_scope){
 
-    if($testfile){
+        "Day"     {$timelimit = $(get-date).AddDays($milestone)}
+        "Hour"    {$timelimit = $(get-date).AddHours($milestone)}
+        "Minutes" {$timelimit = $(get-date).AddMinutes($milestone); }
+
+    }
+    Write-Host -ForegroundColor Yellow "Now Working on ValidateFile function ....."
+    Write-host -ForegroundColor DarkYellow "Your last write change on this file: $file_last_wr"
+
+    if ( $timelimit -gt $file_last_wr ){
         
-        Write-Host -ForegroundColor Magenta "Found file ""$export_info"" "
-        $chkfile = Get-ChildItem $export_info
+        write-host -ForegroundColor Red "*** Recommenced rescan File Because it should not over ""$timelimit"" ***"
+        $ans = 1
+        return $ans
         
-        $timelimit = $(get-date).AddMinutes(-10)
-        $lastwr = $chkfile.LastWriteTime
-        $motd = "Last Update File is ""$lastwr"" "
-        Write-Host -ForegroundColor Magenta $motd
-        if ( $timelimit -gt $lastwr ){
-                write-host -ForegroundColor Red "*** Recommenced rescan File Because it should not over ""$timelimit"" ***"
-        }
     }else{
-        
-        Write-Host -ForegroundColor Magenta "Not Found file ""$export_info"" " 
-	return 1;
-        break;
+        $ans = 0
+        return $ans
     }
-
-    Write-Host " "
-    $choice = Read-Host "Do you want to rescan and update file ? Y/N (Default:Yes)"
-
-    switch($choice){
-        "y" { return 1; }
-        "n" { return 0; }
-        default { return 1; }
-    }
-}
-
-function gatheringPreInfo {
     
-    param (
-
-        [Parameter(Mandatory)]
-        [int]$ans
-    )
-    if($ans -eq 1){
-        Write-Host -ForegroundColor Green "Start New Scan ....."
-        get-cluster -name $inputCluster | Get-VMHost   | get-vm | Get-NetworkAdapter | Select-Object Parent,Macaddress,NetworkName,Name,@{l="NewNetworkAdapter";e={migrateSwtich($_.NetworkName)}} | export-csv $export_info -NoTypeInformation 
-    }else{
-        Write-Host -ForegroundColor Green "Use Cache ....."
-    }
 }
 
 
-function sentEmail {
-
-    # ***require*** $task = import-csv -Path $job_path
-
-    # Send Email Notification about Listing will Progress
-    # ---------------------------------------------------
-
-    $confirm = Read-Host "Do you want to send Notification about Progess to $mailto ? Y/N"
-    if($confirm -eq "Y"){
-
-        $newVMnet = $task | Select-Object @{l="CurrentVMnet";e={$_.NetworkName}},@{l="MigrateToVMnet";e={$_.NewNetworkAdapter}} -Unique | Sort-Object CurrentVMnet |  ConvertTo-Html -Fragment -Property CurrentVMnet,MigrateToVMnet | Set-AlternatingRows -CSSEvenClass even -CSSOddClass odd 
-        $taskVM = $task | Select-Object @{l="GuestVM";e={$_.Parent}} -Unique | Sort-Object GuestVM | ConvertTo-Html -Fragment -Property GuestVM | Set-AlternatingRows -CSSEvenClass even -CSSOddClass odd 
-        $msg = ConvertTo-Html -Body "$body" -Title "status report" -Head $Header
-        $msgConvert = $msg | out-string 
-        #ConvertTo-Html -Body "$body" -Title "status report" -Head $Header | Out-File E:\PoCLI\report_rev1.html
-        Send-MailMessage -From $mailfrom -To $mailto -Subject $mailsubject -Attachments $job_path -BodyAsHtml -Body $msgConvert -SmtpServer $smtpserv
-        Write-Host "Send Email Already !!! Please Check !!!"
-    }
-}
-
-
-# START SCRIPT HERE!!!
-# --------------------
-
-# Init Global Variable
-# --------------------
-$ExportPath = "E:\PoCLI\Cluster\"
-$tempPath = $ExportPath+"temp.csv"
-$datetime = Get-Date
-$vlan_vs2dvs = "E:\PoCLI\MigrateToDVS.csv"
-$vlan_dvs2vs = "E:\PoCLI\MigrateToVS.csv"
-
-# Init Mail Variable
-# -------------------
-$smtpserv = "164.115.3.100"
-$mailto = "chalermsak.krourwan@ega.or.th"
-$mailfrom = "pocli@cloud.ega.or.th"
-$mailsubject = "Migration Task Notification"
-
-# HTML Variable
-# -------------
-$Header = @"
-<style>
-.tb { width:640px; border-width: 0px;}
-TABLE {border-width: 1px;border-style: solid;border-color: black;border-collapse: collapse; font-size:14px; font-family:tahoma; width:100% }
-.th {border-width: 0px;padding: 3px;border-style: solid;border-color: white;background-color: #99c2ff; font-size:15px; font-family:tahoma; color:white;}
-.td {border-width: 1px;padding: 3px;border-style: solid;border-color: black;}
-.detail {black;background-color: #66a3ff; font-size:20px; font-family:tahoma; color:white; padding:10px 10px 10px 10px;}
-.detailSub {black;background-color: #66a3ff; font-size:12px; font-family:tahoma; color:white; padding:10px 10px 10px 10px;}
-.odd  { background-color:#ffffff; }
-.even { background-color:#cce0ff; }
-</style>
-"@
-# HTML Main Structure
-# --------------------
-$body = @"
-<table class="tb" >
-<tr><td><img src="E:\PoCLI\logo.png"></td></tr>
-<tr><td class="detail">Task Migration VMNET on Cluster</td></tr>
-<tr><td class="detailSub">$datetime       run scipt by  $username  </td></tr>
-<tr><td>$newvmnet</td></tr>
-<tr><td>$taskVM</td></tr>
-</table>
-"@
-# Display and ask for clustername after that get-cluster
-# -------------------------------------------------------
-Write-Host "*****************************************************"
-Write-Host "*                                                   *"
-Write-Host "*    Welcome To Migration VMNET scope Cluster       *"
-Write-Host "*                                                   *"
-Write-Host "*****************************************************"
-Write-Host -ForegroundColor Cyan "!!! Show Cluster List !!!"
-get-cluster | Select-Object Name
-Write-Host " "
-
-$inputCluster = Read-Host "Please Insert Cluster Name"
-$objCluster = Get-cluster -Name "$inputCluster" -ErrorAction SilentlyContinue
-
-# If can run get-cluster
-# ----------------------
-if($objCluster){
+function setTask{
 
     # Select Migration Type 
     # ---------------------
-    Write-Host "*****************************************************"
-    Write-Host "*                                                   *"
-    Write-Host "*         Please Select Type of Migration           *"
-    Write-Host "*                                                   *"
-    Write-Host "*****************************************************"
+    Write-Host -ForegroundColor Cyan "*****************************************************"
+    Write-Host -ForegroundColor Cyan "*                                                   *"
+    Write-Host -ForegroundColor Cyan "*         Please Select Type of Migration           *"
+    Write-Host -ForegroundColor Cyan "*                                                   *"
+    Write-Host -ForegroundColor Cyan "*****************************************************"
     Write-Host "1. Migrate From Distribute Switch to Standard Virtual Switch ( DVS -> VS )"
     Write-Host "2. Migrate From Standard Virutal Switch to Distribute Switch ( VS -> DVS )"
     Write-Host -ForegroundColor Cyan "Default: 1"
@@ -314,28 +240,180 @@ if($objCluster){
  
         Default { $vmnets = Import-Csv -Path $vlan_dvs2vs; Write-Host -ForegroundColor Yellow "Migration DVS -> VS" }
     }
+    return $vmnets
+
+}
+
+function gatheringPreInfo {
+    
+    param (
+
+        [Parameter(Mandatory=$true)]
+        [int]$ans,
+
+        [Parameter(Mandatory=$true)]
+        [string]$clustername
+    )
+    if($ans -eq 1){
+        Write-Host -ForegroundColor Green "Start New Scan ....."
+        get-cluster -name $clustername | Get-VMHost   | get-vm | Get-NetworkAdapter | Select-Object Parent,Macaddress,NetworkName,Name,@{l="NewNetworkAdapter";e={migrateSwtich($_.NetworkName)}} | export-csv $export_info -NoTypeInformation 
+        Write-Host -ForegroundColor Green "New Scan Complete ....."
+    }else{
+        Write-Host -ForegroundColor Green "Use Cache ....."
+    }
+}
+
+function progressMigrate {
+    
+    param (
+
+        [Parameter(Mandatory=$true)]
+        [string]$log,
+
+        [Parameter(Mandatory=$true)]
+        [int]$loop,
+
+        [Parameter(Mandatory=$true)]
+        [string]$path
+    )
+
+
+
+    Write-Host -ForegroundColor Cyan "*****************************************************"
+    Write-Host -ForegroundColor Cyan "*                                                   *"
+    Write-Host -ForegroundColor Cyan "*        Please Confirm to Progress Task            *"
+    Write-Host -ForegroundColor Cyan "*                                                   *"
+    Write-Host -ForegroundColor Cyan "*****************************************************"
+    Write-Host -ForegroundColor Yellow "Script will Progress on $loop Task"
+    $confirm = Read-Host "Do you want simulation run ? Y/N (Default:Yes)" 
+    switch($confirm){
+        "y" { $proc = 1; }
+        "n" { $proc = 0; }
+        default { $proc = 1; }
+    }
+    
+    $count = 0 
+    $task = import-csv -Path $path
+
+    foreach($j in $task)
+    {
+        # Init Parameter
+        # ---------------            
+        $vmname = $j.Parent
+        $vmnic = $j.NetworkName
+        $newnic = $j.NewNetworkAdapter
+        $percent = [int]$percent = $count/$loop*100
+
+        $time_log = $(get-date).DateTime | Out-String
+        $time_log += " Working on $vmname going change $vmnic to $newnic"
+        $time_log | Out-File $log -Append
+
+
+
+        # Working Progress
+        # -----------------
+        Write-Host "... Now Working on $vmname ..." -ForegroundColor DarkYellow
+        $getInfo = Get-NetworkAdapter -VM $vmname | ? { $_.NetworkName -eq $vmnic }
+        
+        if($proc -eq 1){
+            Write-Host -ForegroundColor Cyan "SimuLate RUN"
+            $getInfo | Set-NetworkAdapter -NetworkName $newnic -WhatIf
+        }else{
+            Write-Host -ForegroundColor Cyan "Real RUN"
+            #$getInfo | Set-NetworkAdapter -NetworkName $newnic -Confirm:$false -ErrorAction Stop 
+        }
+        $getinfo | ft -AutoSize
+        $count++
+
+        # Progress Bar
+        # -------------
+        Write-Progress -Activity "Migration VMNET" -Status "Migrating Now:   $vmname   Total:   $count/$loop  Percent:$percent% " -PercentComplete($count/$loop*100 )
+    }
+
+}
+
+function getReportMigration{
+     
+    param (
+
+        [Parameter(Mandatory=$true)]
+        [string]$path1
+    )
+    $path1
+    $getReport = Import-Csv -path $path1
+    $getReport
+    
+}
+
+# Authentication to vCenter
+# --------------------------
+#Get-Credential | Export-Clixml -Path "E:\PoCLI\passwd.xml"
+$mypasswd = Import-Clixml -Path "E:\PoCLI\passwd.xml"
+$username = $mypasswd.username | out-string
+$conn = Connect-VIServer -Server 10.9.10.100 -Credential $mypasswd
+
+$vlan_vs2dvs = "E:\PoCLI\MigrateToDVS.csv"
+$vlan_dvs2vs = "E:\PoCLI\MigrateToVS.csv"
+$ExportPath = "E:\PoCLI\Cluster\"
+
+
+# Display and ask for clustername after that get-cluster
+# -------------------------------------------------------
+Write-Host -ForegroundColor Cyan "*****************************************************"
+Write-Host -ForegroundColor Cyan "*                                                   *"
+Write-Host -ForegroundColor Cyan "*    Welcome To Migration VMNET scope Cluster       *"
+Write-Host -ForegroundColor Cyan "*                                                   *"
+Write-Host -ForegroundColor Cyan "*****************************************************"
+Write-Host -ForegroundColor Cyan "!!! Show Cluster List !!!"
+get-cluster | Select-Object Name
+Write-Host " "
+
+$inputCluster = Read-Host "Please Insert Cluster Name"
+$objCluster = Get-cluster -Name "$inputCluster" -ErrorAction SilentlyContinue
+
+# If can run get-cluster
+# ----------------------
+if($objCluster){
+
+    $vmnets = setTask
 
     # Define Export Path from Scan
     # ----------------------------
-
     $export_info = $ExportPath+$inputCluster+".csv"
     $job_path = $ExportPath+"task_"+$inputCluster+".csv"
-
+    $log = $ExportPath+"log_"+$inputCluster+".txt"
     Write-Host -ForegroundColor DarkYellow "Now Gathering Pre Info...."
+
     # Command to get info about NetworkAdapter and export to CSV
     # Comment get-cluster to skip scan but must have .csv gen already
     # ----------------------------------------------------------------
-    $ans = validDateFile($export_info)
-    gatheringPreInfo($ans)
-    Write-Host -ForegroundColor Green "Now Complete ....."
+    #$ans = validDateFile -file $export_info -milestone -10 -milestone_scope Minutes
+    $ans = valiDateFile -file $export_info -milestone -1 -milestone_scope Hour
+    gatheringPreInfo -ans $ans -clustername $inputCluster
 
     $work = import-csv -Path $export_info
     $work | ? { $_.NewNetworkAdapter -ne "Unset" } | export-csv -Path $job_path
     $task = import-csv -Path $job_path  # Define and Use in Function progressMigrate
-    $loop = $task.count                 # Define and Use in Function progressMigrate
+    
+    ReportHeader("List of VLANS that can't Migration ")
+    $unset = $work | ? { $_.NewNetworkAdapter -eq "Unset" } | select-object NetworkName -Unique 
+    $unset_group |Sort-Object NetworkName | ft -auto 
+    Read-Host "Please Any Key to Continous"
 
-    sentEmail
-    progressMigrate
+
+    $email = Read-Host "Do you want to send Notification about Progess ? Y/N"
+    if($email -eq "Y"){
+
+        $newVMnet = $task | Select-Object @{l="CurrentVMnet";e={$_.NetworkName}},@{l="MigrateToVMnet";e={$_.NewNetworkAdapter}} -Unique | Sort-Object CurrentVMnet |  ConvertTo-Html -Fragment -Property CurrentVMnet,MigrateToVMnet | Set-AlternatingRows -CSSEvenClass even -CSSOddClass odd | Out-String
+        $taskVM = $task | Select-Object @{l="GuestVM";e={$_.Parent}} -Unique | Sort-Object GuestVM | ConvertTo-Html -Fragment -Property GuestVM | Set-AlternatingRows -CSSEvenClass even -CSSOddClass odd |Out-String
+
+        sendHtmlEmails -mailsubject "Task Vmnet Migration List" -input_body1 $newVMnet -input_body2 $taskVM -title "Script automation for Migration VMnet in Guest VM that on Cluster" -attach $job_path -running_user $username 
+        write-host -ForegroundColor Green "Sent Mail Already Please Check your Inbox....."
+    }
+
+
+    progressMigrate -log $log -loop $loop -path $job_path 
+
 
 }else{
 
