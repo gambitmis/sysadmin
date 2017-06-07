@@ -194,7 +194,7 @@ function populateVMreport{
         $mailto = "chalermsak.krourwan@ega.or.th"
         $subject = "Export PoweredOn VM at "+$site
         $body = "Info "+$site+" from file CSV attachment"
-        $smtpserv = "164.115.3.100"
+        $smtpserv = "xxxxxx"
         Send-MailMessage -From $mailfrom -To $mailto -Subject $subject -Attachments $attach -Body $body  -SmtpServer $smtpserv  -Priority High
 
     }
@@ -206,8 +206,8 @@ function populateVMreport{
     }
 }
 
-$vcenter_server = "10.9.10.100"
-$site = "EGA"
+$vcenter_server = "xxxxxxx"
+$site = "1"
 $ega_export = "E:\PoCLI\Projects\populateVM\guestvm_"+$site+".csv"
 $ega_psobject = "E:\PoCLI\Projects\populateVM\psobject_"+$site+".csv"
 
@@ -217,8 +217,8 @@ populateVM -viserv $vcenter_server -export $ega_export -newscan $newScan -newpso
 populateVMreport -psobject $ega_psobject -report centreon -site $site
 
 
-$vcenter_server = "10.9.30.100"
-$site = "CAT"
+$vcenter_server = "xxxxx"
+$site = "2"
 $cat_export = "E:\PoCLI\Projects\populateVM\guestvm_"+$site+".csv"
 $cat_psobject = "E:\PoCLI\Projects\populateVM\psobject_"+$site+".csv"
 
@@ -229,8 +229,8 @@ populateVMreport -psobject $cat_psobject -report centreon -site $site
 
 
 
-$vcenter_server = "10.9.40.100"
-$site = "TRUE"
+$vcenter_server = "xxxxxx"
+$site = "3"
 $true_export = "E:\PoCLI\Projects\populateVM\guestvm_"+$site+".csv"
 $true_psobject = "E:\PoCLI\Projects\populateVM\psobject_"+$site+".csv"
 $newScan = valiDateFile -file $true_export -milestone -5 -milestone_scope Day 
