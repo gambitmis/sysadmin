@@ -1,0 +1,86 @@
+
+param([string]$VCSA="10.9.xx.xx")
+
+switch ($VCSA) {
+    "10.9.xx.xx" { $passwd = Import-Clixml -Path "E:\PowerCLI\2018\SnapshotMgt\passwd.xml"; $SITES="EGA"; }
+    "10.9.xx.xx" { $passwd = Import-Clixml -Path "E:\PowerCLI\2018\SnapshotMgt\passwd.xml"; $SITES="DR-EGA"; }
+    "10.9.xx.xx" { $passwd = Import-Clixml -Path "E:\PowerCLI\2018\SnapshotMgt\passwd_cat.xml"; $SITES="CAT"; }
+    "10.9.xx.xx" { $passwd = Import-Clixml -Path "E:\PowerCLI\2018\SnapshotMgt\passwd_true.xml"; $SITES="TRUE"; }
+}
+$conn = Connect-VIServer -Server $VCSA -Credential $passwd -ErrorAction SilentlyContinue
+
+$cellStyles = {
+    param(
+        $workSheet,
+        $totalRows,
+        $lastColumn
+    )    
+
+    Set-CellStyle $workSheet 1 $LastColumn Solid Orange
+
+    foreach($row in (2..$totalRows | Where-Object {$_ % 2 -eq 0})) {
+        Set-CellStyle $workSheet $row $LastColumn Solid White
+    }
+
+    foreach($row in (2..$totalRows | Where-Object {$_ % 2 -eq 1})) {
+        Set-CellStyle $workSheet $row $LastColumn Solid LightGray
+    }
+}
+
+$pt=[ordered]@{}
+
+$pt.GRAPH=@{
+    SourceWorkSheet='SnapshotOver3Days'
+    PivotRows = "VM"    
+    PivotData= @{'SizeGB'='SUM'}
+    IncludePivotChart=$true
+    ChartType='PieExploded3D'
+}
+
+# INIT PARAM
+# ----------
+$VM_PREFIX = "0*"
+#$FILE_SERIAL = Get-Date -Format "MM-dd-yyyy" | Out-String
+$SAVE_FILE = "E:\PowerCLI\2018\SnapshotMgt\ListSnapshots_$SITES.xlsx"
+# INIT E-MAIL PARAM
+$mail_from = "scan-snapshot@ega.or.th"
+#$mail_to = "chalermsak.krourwan@ega.or.th"
+$mail_to = "enm_support@ega.or.th"
+$mail_subject = "G-CLOUD SNAPSHOT REPORT on $SITES"
+$mail_smtpserv = "164.115.3.100"
+$today = Get-Date
+
+#New-EventLog -LogName Application -Source "SnapshotMgt"
+
+if($conn){
+    Write-Host "Connect VCenter $SITES Successfully"
+    #Write-EventLog -LogName Application -Source "SnapshotMgt" -EntryType Information -EventId 1 -Message "Connect vCenter $SITES Successfully"
+    $getAllSnapshot = Get-VM -Name $VM_PREFIX | Get-Snapshot | Select-Object VMId,VM,Name,Id,Created,PowerState,SizeGB | Sort-Object SizeGB -Descending
+    $overDays = (Get-Date).AddDays(-3)
+    $getExpireSnapshot = $getAllSnapshot | Where-Object { $_.Created -lt $overDays }
+    $counts = $getExpireSnapshot.count
+    if($counts -gt 0){
+        Write-Host "FOUND EXPIRE SNAPSHOT"
+        #Write-EventLog -LogName Application -Source "SnapshotMgt" -EntryType Information -EventId 11 -Message "SnapshotMgt Found Expire Snapshot"
+        #$getExpireSnapshot | Select-Object VM,Name,Created,SizeGB | Export-Excel -Path $SAVE_FILE -AutoSize -WorkSheetname SnapshotOver3Days -IncludePivotTable -PivotRows VM -PivotData @{SizeGB="SUM"} -IncludePivotChart -ChartType PieExploded3D
+        $getExpireSnapshot | Select-Object VM,Name,Created,SizeGB | Export-Excel -Path $SAVE_FILE -AutoSize -WorkSheetname SnapshotOver3Days -PivotTableDefinition $pt -CellStyleSB $cellStyles
+        $EMAIL_BODY = "SYSTEM SCAN ON $today FOUND EXPIRE SNAPSHOT $counts"
+        Send-MailMessage -From $mail_from -To $mail_to -Subject $mail_subject -Body $EMAIL_BODY -Attachments $SAVE_FILE -SmtpServer $mail_smtpserv -Priority High
+        $getExpireSnapshot = $null
+        $getAllSnapshot = $null
+        Remove-Item $SAVE_FILE
+    }else{
+        Write-Host "NOT FOUND EXPIRE SNAPSHOT"
+        #Write-EventLog -LogName Application -Source "SnapshotMgt" -EntryType Information -EventId 12 -Message "SnapshotMgt not Found Expire Snapshot"
+        $EMAIL_BODY = "SYSTEM SCAN ON $today FOUND EXPIRE SNAPSHOT 0"
+        Send-MailMessage -From $mail_from -To $mail_to -Subject $mail_subject -Body $EMAIL_BODY -SmtpServer $mail_smtpserv -Priority High
+        $EMAIL_BODY = $null
+    }
+    Disconnect-VIServer -Server $VCSA -Confirm:$false
+}else {
+    Write-Host "CAN'T CONNECT VCENTER PLZ CONTACT ENM"
+    #Write-EventLog -LogName Application -Source "SnapshotMgt" -EntryType Information -EventId 2 -Message "CAN'T CONNECT VCENTER"
+    $EMAIL_BODY = "SYSTEM CAN'T CONNECT VCENTER PLZ CONTACT ENM(TRIN TEL 4205)"
+    Send-MailMessage -From $mail_from -To $mail_to -Subject $mail_subject -Body $EMAIL_BODY -SmtpServer $mail_smtpserv -Priority High
+    $EMAIL_BODY = $null
+}
